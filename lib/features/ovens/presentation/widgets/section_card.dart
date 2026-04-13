@@ -6,7 +6,7 @@ class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(20),
   });
 
   final Widget child;
@@ -16,23 +16,22 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        borderRadius: BorderRadius.circular(26),
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             AppColors.card,
             AppColors.surface,
+            AppColors.surfaceAlt,
           ],
         ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: AppColors.border.withValues(alpha: 0.95),
-        ),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
           ),
         ],
       ),

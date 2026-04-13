@@ -23,38 +23,19 @@ class SensorStepTile extends StatelessWidget {
   }
 
   Color _statusColor() {
-    if (step.checked) {
-      return AppColors.successGreen;
-    }
-    if (_isDue()) {
-      return AppColors.danger;
-    }
+    if (step.checked) return AppColors.successGreen;
+    if (_isDue()) return AppColors.danger;
     return AppColors.warning;
   }
 
   String _statusText() {
-    if (step.checked) {
-      return 'Checked';
-    }
-    if (_isDue()) {
-      return 'Pending Check';
-    }
+    if (step.checked) return 'Checked';
+    if (_isDue()) return 'Pending';
     return 'Upcoming';
   }
 
-  IconData _statusIcon() {
-    if (step.checked) {
-      return Icons.check_circle;
-    }
-    if (_isDue()) {
-      return Icons.notification_important_rounded;
-    }
-    return Icons.schedule;
-  }
-
-  // ✅ FIX: label fallback
   String _stepLabel() {
-    return step.toString().split('.').last;
+    return step.toString().split('.').last.toUpperCase();
   }
 
   @override
@@ -62,51 +43,81 @@ class SensorStepTile extends StatelessWidget {
     final color = _statusColor();
     final isDue = _isDue();
 
-    return InkWell(
-      onTap: (!step.checked && isDue) ? onCheck : null,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color, width: 1.2),
-        ),
-        child: Row(
-          children: [
-            Icon(_statusIcon(), color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _stepLabel(), // ✅ FIXED
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _statusText(),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (!step.checked && isDue)
-              ElevatedButton(
-                onPressed: onCheck,
-                child: const Text('Check'),
-              ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.surfaceAlt.withValues(alpha: 0.9),
+            AppColors.card.withValues(alpha: 0.9),
           ],
         ),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              step.checked
+                  ? Icons.check
+                  : isDue
+                      ? Icons.priority_high
+                      : Icons.schedule,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _stepLabel(),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _statusText(),
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!step.checked && isDue)
+            FilledButton(
+              onPressed: onCheck,
+              style: FilledButton.styleFrom(
+                backgroundColor: color,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('CHECK'),
+            ),
+        ],
       ),
     );
   }

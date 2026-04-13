@@ -33,6 +33,8 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
   bool startTimeManuallyPicked = false;
 
   int currentIndex = 0;
+  bool _isInitializing = true;
+  String? _initError;
 
   @override
   void initState() {
@@ -46,11 +48,46 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
       notificationService: NotificationService(),
     );
 
-    controller.init();
     controller.addListener(_handleControllerTick);
 
     final now = DateTime.now();
     selectedTime = TimeOfDay(hour: now.hour, minute: now.minute);
+
+    _initializeController();
+  }
+
+  Future<void> _initializeController() async {
+    try {
+      await controller.init();
+
+      if (!mounted) {
+        return;
+      }
+
+      final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
+      final availableOvens = AppDefaults.ovenOptions
+          .where((oven) => !activeOvenNames.contains(oven))
+          .toList();
+
+      setState(() {
+        _isInitializing = false;
+        _initError = null;
+        selectedOven = availableOvens.contains(selectedOven)
+            ? selectedOven
+            : (availableOvens.isNotEmpty
+                ? availableOvens.first
+                : AppDefaults.defaultOven);
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isInitializing = false;
+        _initError = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   @override
@@ -72,17 +109,36 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
   }
 
   void _handleControllerTick() {
-    if (!mounted || startTimeManuallyPicked) {
+    if (!mounted || _isInitializing) {
       return;
     }
 
-    final now = controller.now;
-    final updatedTime = TimeOfDay(hour: now.hour, minute: now.minute);
+    if (!startTimeManuallyPicked) {
+      final now = controller.now;
+      final updatedTime = TimeOfDay(hour: now.hour, minute: now.minute);
 
-    if (updatedTime.hour != selectedTime.hour ||
-        updatedTime.minute != selectedTime.minute) {
+      if (updatedTime.hour != selectedTime.hour ||
+          updatedTime.minute != selectedTime.minute) {
+        setState(() {
+          selectedTime = updatedTime;
+        });
+      }
+    }
+
+    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
+    final availableOvens = AppDefaults.ovenOptions
+        .where((oven) => !activeOvenNames.contains(oven))
+        .toList();
+
+    final nextSelectedOven = availableOvens.contains(selectedOven)
+        ? selectedOven
+        : (availableOvens.isNotEmpty
+            ? availableOvens.first
+            : AppDefaults.defaultOven);
+
+    if (nextSelectedOven != selectedOven) {
       setState(() {
-        selectedTime = updatedTime;
+        selectedOven = nextSelectedOven;
       });
     }
   }
@@ -102,6 +158,28 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
   }
 
   Future<void> startTracking() async {
+    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
+    final availableOvens = AppDefaults.ovenOptions
+        .where((oven) => !activeOvenNames.contains(oven))
+        .toList();
+
+    if (availableOvens.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No ovens available right now.'),
+        ),
+      );
+      return;
+    }
+
+    final trackingOven = availableOvens.contains(selectedOven)
+        ? selectedOven
+        : availableOvens.first;
+
     final hours = int.tryParse(hourController.text.trim()) ?? 0;
     final minutes = int.tryParse(minuteController.text.trim()) ?? 0;
 
@@ -111,7 +189,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
 
     try {
       await controller.addOvenTracking(
-        ovenName: selectedOven,
+        ovenName: trackingOven,
         startTime: trackingTime,
         addHours: hours,
         addMinutes: minutes,
@@ -121,10 +199,18 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
         return;
       }
 
+      final updatedActiveNames = controller.ovens.map((e) => e.ovenName).toSet();
+      final updatedAvailableOvens = AppDefaults.ovenOptions
+          .where((oven) => !updatedActiveNames.contains(oven))
+          .toList();
+
       setState(() {
         final now = controller.now;
         selectedTime = TimeOfDay(hour: now.hour, minute: now.minute);
         startTimeManuallyPicked = false;
+        selectedOven = updatedAvailableOvens.isNotEmpty
+            ? updatedAvailableOvens.first
+            : AppDefaults.defaultOven;
         currentIndex = 1;
       });
 
@@ -189,6 +275,21 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
 
     if (confirmed == true) {
       await controller.closeOven(sessionId);
+
+      if (!mounted) {
+        return;
+      }
+
+      final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
+      final availableOvens = AppDefaults.ovenOptions
+          .where((oven) => !activeOvenNames.contains(oven))
+          .toList();
+
+      setState(() {
+        selectedOven = availableOvens.isNotEmpty
+            ? availableOvens.first
+            : AppDefaults.defaultOven;
+      });
     }
   }
 
@@ -207,62 +308,144 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
     return count;
   }
 
+  Widget _buildBody() {
+    if (_isInitializing) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_initError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 42,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Failed to load tracking page',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _initError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isInitializing = true;
+                      _initError = null;
+                    });
+                    _initializeController();
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
+    final availableOvens = AppDefaults.ovenOptions
+        .where((oven) => !activeOvenNames.contains(oven))
+        .toList();
+
+    final safeSelectedOven = availableOvens.contains(selectedOven)
+        ? selectedOven
+        : (availableOvens.isNotEmpty
+            ? availableOvens.first
+            : AppDefaults.defaultOven);
+
+    switch (currentIndex) {
+      case 0:
+        return StartTrackingPage(
+          controller: controller,
+          selectedOven: safeSelectedOven,
+          selectedTime: selectedTime,
+          hourController: hourController,
+          minuteController: minuteController,
+          startTimeManuallyPicked: startTimeManuallyPicked,
+          onOvenChanged: (value) {
+            setState(() {
+              selectedOven = value;
+            });
+          },
+          onPickStartTime: pickStartTime,
+          onStartTracking: startTracking,
+          ovenOptions: AppDefaults.ovenOptions,
+        );
+      case 1:
+        return ActiveOvensPage(
+          controller: controller,
+          onCloseOven: confirmCloseOven,
+          onCheckStep: ({
+            required String sessionId,
+            required String stepId,
+          }) {
+            controller.markSensorChecked(
+              sessionId: sessionId,
+              stepId: stepId,
+            );
+          },
+        );
+      case 2:
+        return DueChecksPage(
+          controller: controller,
+          onCheckStep: ({
+            required String sessionId,
+            required String stepId,
+          }) {
+            controller.markSensorChecked(
+              sessionId: sessionId,
+              stepId: stepId,
+            );
+          },
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final titles = [
+      'Start Tracking',
+      'Active Ovens',
+      'Due Checks',
+    ];
+
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
         final dueCount = _dueChecksCount();
-
-        final pages = [
-          StartTrackingPage(
-            controller: controller,
-            selectedOven: selectedOven,
-            selectedTime: selectedTime,
-            hourController: hourController,
-            minuteController: minuteController,
-            startTimeManuallyPicked: startTimeManuallyPicked,
-            onOvenChanged: (value) {
-              setState(() {
-                selectedOven = value;
-              });
-            },
-            onPickStartTime: pickStartTime,
-            onStartTracking: startTracking,
-            ovenOptions: AppDefaults.ovenOptions,
-          ),
-          ActiveOvensPage(
-            controller: controller,
-            onCloseOven: confirmCloseOven,
-            onCheckStep: ({
-              required String sessionId,
-              required String stepId,
-            }) {
-              controller.markSensorChecked(
-                sessionId: sessionId,
-                stepId: stepId,
-              );
-            },
-          ),
-          DueChecksPage(
-            controller: controller,
-            onCheckStep: ({
-              required String sessionId,
-              required String stepId,
-            }) {
-              controller.markSensorChecked(
-                sessionId: sessionId,
-                stepId: stepId,
-              );
-            },
-          ),
-        ];
-
-        final titles = [
-          'Start Tracking',
-          'Active Ovens',
-          'Due Checks',
-        ];
 
         return Scaffold(
           backgroundColor: AppColors.bg,
@@ -297,10 +480,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
                 ],
               ),
             ),
-            child: IndexedStack(
-              index: currentIndex,
-              children: pages,
-            ),
+            child: _buildBody(),
           ),
           bottomNavigationBar: SafeArea(
             top: false,

@@ -333,8 +333,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         const SizedBox(height: 18),
+
+        // ✅ FIXED HERE
         DropdownButtonFormField<String>(
-          value: _resolveSelectedValue(
+          initialValue: _resolveSelectedValue(
             tones: _mainAlarmTones,
             selectedUri: widget.controller.mainAlarmToneUri,
           ),
@@ -349,9 +351,7 @@ class _SettingsPageState extends State<SettingsPage> {
             );
           }).toList(),
           onChanged: (value) async {
-            if (value == null) {
-              return;
-            }
+            if (value == null) return;
 
             final selectedTone = _mainAlarmTones.firstWhere(
               (tone) => tone.uri == value,
@@ -359,16 +359,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
             await widget.controller.setMainAlarmTone(selectedTone);
 
-            if (!mounted) {
-              return;
-            }
+            if (!mounted) return;
 
             setState(() {});
           },
         ),
+
         const SizedBox(height: 16),
+
+        // ✅ FIXED HERE
         DropdownButtonFormField<String>(
-          value: _resolveSelectedValue(
+          initialValue: _resolveSelectedValue(
             tones: _sensorAlertTones,
             selectedUri: widget.controller.sensorAlarmToneUri,
           ),
@@ -383,9 +384,7 @@ class _SettingsPageState extends State<SettingsPage> {
             );
           }).toList(),
           onChanged: (value) async {
-            if (value == null) {
-              return;
-            }
+            if (value == null) return;
 
             final selectedTone = _sensorAlertTones.firstWhere(
               (tone) => tone.uri == value,
@@ -393,14 +392,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
             await widget.controller.setSensorAlarmTone(selectedTone);
 
-            if (!mounted) {
-              return;
-            }
+            if (!mounted) return;
 
             setState(() {});
           },
         ),
+
         const SizedBox(height: 16),
+
         Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(

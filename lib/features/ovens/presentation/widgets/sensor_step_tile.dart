@@ -52,6 +52,11 @@ class SensorStepTile extends StatelessWidget {
     return Icons.schedule;
   }
 
+  // ✅ FIX: label fallback
+  String _stepLabel() {
+    return step.toString().split('.').last;
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = _statusColor();
@@ -63,4 +68,46 @@ class SensorStepTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color, width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Icon(_statusIcon(), color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _stepLabel(), // ✅ FIXED
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _statusText(),
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!step.checked && isDue)
+              ElevatedButton(
+                onPressed: onCheck,
+                child: const Text('Check'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

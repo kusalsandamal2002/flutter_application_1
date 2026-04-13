@@ -33,9 +33,10 @@ class StartTrackingPage extends StatelessWidget {
   final List<String> ovenOptions;
 
   String _formatSelectedTime(TimeOfDay time) {
-    final hh = time.hour.toString().padLeft(2, '0');
-    final mm = time.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
+    final int hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final String mm = time.minute.toString().padLeft(2, '0');
+    final String period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour12:$mm $period';
   }
 
   Widget _panelLabel(String text) {
@@ -124,6 +125,7 @@ class StartTrackingPage extends StatelessWidget {
   InputDecoration _inputDecoration({
     required String label,
     IconData? icon,
+    EdgeInsetsGeometry? contentPadding,
   }) {
     return InputDecoration(
       labelText: label,
@@ -139,6 +141,7 @@ class StartTrackingPage extends StatelessWidget {
             ),
       filled: true,
       fillColor: AppColors.surfaceAlt.withValues(alpha: 0.62),
+      contentPadding: contentPadding,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -227,16 +230,6 @@ class StartTrackingPage extends StatelessWidget {
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Fast operator workflow with polished controls and clearer visual hierarchy.',
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.45,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
-        ),
         const SizedBox(height: 22),
         DropdownButtonFormField<String>(
           initialValue: safeSelectedOven,
@@ -246,10 +239,15 @@ class StartTrackingPage extends StatelessWidget {
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w800,
+            fontSize: 18,
           ),
           decoration: _inputDecoration(
             label: 'Select oven',
             icon: Icons.factory_outlined,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 26,
+            ),
           ),
           items: availableOvens.map((oven) {
             return DropdownMenuItem<String>(
@@ -259,6 +257,7 @@ class StartTrackingPage extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
+                  fontSize: 18,
                 ),
               ),
             );
@@ -271,7 +270,7 @@ class StartTrackingPage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             gradient: LinearGradient(
@@ -299,25 +298,23 @@ class StartTrackingPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _panelLabel('START TIME'),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         Text(
                           _formatSelectedTime(selectedTime),
                           style: const TextStyle(
-                            fontSize: 40,
+                            fontSize: 46,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 1.1,
+                            letterSpacing: 1.0,
                             color: AppColors.textPrimary,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppColors.textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
                           startTimeManuallyPicked
                               ? 'Manual time selected'
                               : 'Using current live factory time',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: startTimeManuallyPicked
                                 ? AppColors.primary
@@ -327,13 +324,13 @@ class StartTrackingPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
                       color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: AppColors.primary.withValues(alpha: 0.18),
                       ),
@@ -341,7 +338,7 @@ class StartTrackingPage extends StatelessWidget {
                     child: const Icon(
                       Icons.access_time_rounded,
                       color: AppColors.primary,
-                      size: 20,
+                      size: 22,
                     ),
                   ),
                 ],
@@ -360,17 +357,21 @@ class StartTrackingPage extends StatelessWidget {
                   FilteringTextInputFormatter.digitsOnly,
                 ],
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                 ),
                 decoration: _inputDecoration(
                   label: 'Hours',
                   icon: Icons.schedule_rounded,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 22,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: TextField(
                 controller: minuteController,
@@ -379,13 +380,17 @@ class StartTrackingPage extends StatelessWidget {
                   FilteringTextInputFormatter.digitsOnly,
                 ],
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                 ),
                 decoration: _inputDecoration(
                   label: 'Minutes',
                   icon: Icons.timelapse_rounded,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 22,
+                  ),
                 ),
               ),
             ),

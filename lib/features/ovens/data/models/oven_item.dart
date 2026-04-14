@@ -26,7 +26,7 @@ class OvenItem {
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'sessionId': sessionId,
       'ovenName': ovenName,
       'startMinuteOfDay': startMinuteOfDay,

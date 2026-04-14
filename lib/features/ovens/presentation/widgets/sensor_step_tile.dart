@@ -14,7 +14,7 @@ class SensorStepTile extends StatelessWidget {
   final VoidCallback onCheck;
 
   int _nowMinuteOfDay() {
-    final now = TimeOfDay.now();
+    final TimeOfDay now = TimeOfDay.now();
     return now.hour * 60 + now.minute;
   }
 
@@ -23,25 +23,29 @@ class SensorStepTile extends StatelessWidget {
   }
 
   Color _statusColor() {
-    if (step.checked) return AppColors.successGreen;
-    if (_isDue()) return AppColors.danger;
+    if (step.checked) {
+      return AppColors.successGreen;
+    }
+    if (_isDue()) {
+      return AppColors.danger;
+    }
     return AppColors.warning;
   }
 
   String _statusText() {
-    if (step.checked) return 'Checked';
-    if (_isDue()) return 'Pending';
+    if (step.checked) {
+      return 'Checked';
+    }
+    if (_isDue()) {
+      return 'Pending';
+    }
     return 'Upcoming';
-  }
-
-  String _stepLabel() {
-    return step.toString().split('.').last.toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor();
-    final isDue = _isDue();
+    final Color color = _statusColor();
+    final bool isDue = _isDue();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -49,13 +53,13 @@ class SensorStepTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [
+          colors: <Color>[
             AppColors.surfaceAlt.withValues(alpha: 0.9),
             AppColors.card.withValues(alpha: 0.9),
           ],
         ),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        boxShadow: [
+        boxShadow: <BoxShadow>[
           BoxShadow(
             color: color.withValues(alpha: 0.15),
             blurRadius: 12,
@@ -64,7 +68,7 @@ class SensorStepTile extends StatelessWidget {
         ],
       ),
       child: Row(
-        children: [
+        children: <Widget>[
           Container(
             width: 42,
             height: 42,
@@ -85,9 +89,9 @@ class SensorStepTile extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 Text(
-                  _stepLabel(),
+                  step.display,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,

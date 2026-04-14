@@ -56,6 +56,28 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
     _initializeController();
   }
 
+  List<String> _managedOvenOptions() {
+    if (controller.managedOvens.isNotEmpty) {
+      return controller.managedOvens;
+    }
+    return AppDefaults.ovenOptions;
+  }
+
+  List<String> _availableOvens() {
+    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
+    return _managedOvenOptions()
+        .where((oven) => !activeOvenNames.contains(oven))
+        .toList();
+  }
+
+  String _fallbackSelectedOven() {
+    final managed = _managedOvenOptions();
+    if (managed.isNotEmpty) {
+      return managed.first;
+    }
+    return AppDefaults.defaultOven;
+  }
+
   Future<void> _initializeController() async {
     try {
       await controller.init();
@@ -64,10 +86,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
         return;
       }
 
-      final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
-      final availableOvens = AppDefaults.ovenOptions
-          .where((oven) => !activeOvenNames.contains(oven))
-          .toList();
+      final availableOvens = _availableOvens();
 
       setState(() {
         _isInitializing = false;
@@ -76,7 +95,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
             ? selectedOven
             : (availableOvens.isNotEmpty
                 ? availableOvens.first
-                : AppDefaults.defaultOven);
+                : _fallbackSelectedOven());
       });
     } catch (e) {
       if (!mounted) {
@@ -125,16 +144,13 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
       }
     }
 
-    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
-    final availableOvens = AppDefaults.ovenOptions
-        .where((oven) => !activeOvenNames.contains(oven))
-        .toList();
+    final availableOvens = _availableOvens();
 
     final nextSelectedOven = availableOvens.contains(selectedOven)
         ? selectedOven
         : (availableOvens.isNotEmpty
             ? availableOvens.first
-            : AppDefaults.defaultOven);
+            : _fallbackSelectedOven());
 
     if (nextSelectedOven != selectedOven) {
       setState(() {
@@ -158,10 +174,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
   }
 
   Future<void> startTracking() async {
-    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
-    final availableOvens = AppDefaults.ovenOptions
-        .where((oven) => !activeOvenNames.contains(oven))
-        .toList();
+    final availableOvens = _availableOvens();
 
     if (availableOvens.isEmpty) {
       if (!mounted) {
@@ -199,10 +212,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
         return;
       }
 
-      final updatedActiveNames = controller.ovens.map((e) => e.ovenName).toSet();
-      final updatedAvailableOvens = AppDefaults.ovenOptions
-          .where((oven) => !updatedActiveNames.contains(oven))
-          .toList();
+      final updatedAvailableOvens = _availableOvens();
 
       setState(() {
         final now = controller.now;
@@ -210,7 +220,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
         startTimeManuallyPicked = false;
         selectedOven = updatedAvailableOvens.isNotEmpty
             ? updatedAvailableOvens.first
-            : AppDefaults.defaultOven;
+            : _fallbackSelectedOven();
         currentIndex = 1;
       });
 
@@ -250,6 +260,20 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
         builder: (_) => SettingsPage(controller: controller),
       ),
     );
+
+    if (!mounted) {
+      return;
+    }
+
+    final availableOvens = _availableOvens();
+
+    setState(() {
+      selectedOven = availableOvens.contains(selectedOven)
+          ? selectedOven
+          : (availableOvens.isNotEmpty
+              ? availableOvens.first
+              : _fallbackSelectedOven());
+    });
   }
 
   Future<void> confirmCloseOven(String sessionId) async {
@@ -280,15 +304,12 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
         return;
       }
 
-      final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
-      final availableOvens = AppDefaults.ovenOptions
-          .where((oven) => !activeOvenNames.contains(oven))
-          .toList();
+      final availableOvens = _availableOvens();
 
       setState(() {
         selectedOven = availableOvens.isNotEmpty
             ? availableOvens.first
-            : AppDefaults.defaultOven;
+            : _fallbackSelectedOven();
       });
     }
   }
@@ -373,16 +394,13 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
       );
     }
 
-    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
-    final availableOvens = AppDefaults.ovenOptions
-        .where((oven) => !activeOvenNames.contains(oven))
-        .toList();
+    final availableOvens = _availableOvens();
 
     final safeSelectedOven = availableOvens.contains(selectedOven)
         ? selectedOven
         : (availableOvens.isNotEmpty
             ? availableOvens.first
-            : AppDefaults.defaultOven);
+            : _fallbackSelectedOven());
 
     switch (currentIndex) {
       case 0:
@@ -400,7 +418,7 @@ class _OvenTrackerHomePageState extends State<OvenTrackerHomePage>
           },
           onPickStartTime: pickStartTime,
           onStartTracking: startTracking,
-          ovenOptions: AppDefaults.ovenOptions,
+          ovenOptions: controller.managedOvens,
         );
       case 1:
         return ActiveOvensPage(

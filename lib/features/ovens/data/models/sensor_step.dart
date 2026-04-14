@@ -12,7 +12,7 @@ class SensorStep {
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'id': id,
       'minuteOfDay': minuteOfDay,
       'display': display,

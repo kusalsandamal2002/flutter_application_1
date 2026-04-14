@@ -70,7 +70,7 @@ class StartTrackingPage extends StatelessWidget {
           border: Border.all(
             color: AppColors.border.withValues(alpha: 0.85),
           ),
-          boxShadow: [
+          boxShadow: <BoxShadow>[
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.16),
               blurRadius: 16,
@@ -80,7 +80,7 @@ class StartTrackingPage extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          children: <Widget>[
             Container(
               width: 34,
               height: 34,
@@ -172,7 +172,7 @@ class StartTrackingPage extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
-          colors: [
+          colors: <Color>[
             AppColors.surfaceAlt.withValues(alpha: 0.90),
             AppColors.card.withValues(alpha: 0.90),
           ],
@@ -182,7 +182,7 @@ class StartTrackingPage extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        children: const [
+        children: const <Widget>[
           Icon(
             Icons.local_fire_department_rounded,
             size: 56,
@@ -190,7 +190,7 @@ class StartTrackingPage extends StatelessWidget {
           ),
           SizedBox(height: 16),
           Text(
-            'All ovens are active',
+            'No available ovens',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
@@ -200,7 +200,7 @@ class StartTrackingPage extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            'You cannot start a new tracking session right now. Stop or complete an active oven first, then try again.',
+            'All ovens are currently active or no ovens have been added in Settings yet.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -220,7 +220,7 @@ class StartTrackingPage extends StatelessWidget {
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children: <Widget>[
         const Text(
           'NEW OVEN SESSION',
           style: TextStyle(
@@ -274,7 +274,7 @@ class StartTrackingPage extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             gradient: LinearGradient(
-              colors: [
+              colors: <Color>[
                 AppColors.surfaceAlt.withValues(alpha: 0.90),
                 AppColors.card.withValues(alpha: 0.90),
               ],
@@ -292,11 +292,11 @@ class StartTrackingPage extends StatelessWidget {
                 vertical: 2,
               ),
               child: Row(
-                children: [
+                children: <Widget>[
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      children: <Widget>[
                         _panelLabel('START TIME'),
                         const SizedBox(height: 12),
                         Text(
@@ -306,6 +306,7 @@ class StartTrackingPage extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.0,
                             color: AppColors.textPrimary,
+                            decoration: TextDecoration.none,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -348,13 +349,14 @@ class StartTrackingPage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Row(
-          children: [
+          children: <Widget>[
             Expanded(
               child: TextField(
                 controller: hourController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [
+                inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
                 ],
                 style: const TextStyle(
                   fontSize: 28,
@@ -376,8 +378,9 @@ class StartTrackingPage extends StatelessWidget {
               child: TextField(
                 controller: minuteController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [
+                inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
                 ],
                 style: const TextStyle(
                   fontSize: 28,
@@ -400,7 +403,7 @@ class StartTrackingPage extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onStartTracking,
+            onPressed: safeSelectedOven == null ? null : onStartTracking,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(68),
               backgroundColor: AppColors.primary,
@@ -429,14 +432,20 @@ class StartTrackingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dueChecks = _dueChecksCount();
+    final int dueChecks = _dueChecksCount();
 
-    final activeOvenNames = controller.ovens.map((e) => e.ovenName).toSet();
-    final availableOvens = ovenOptions
+    final List<String> sourceOvenOptions =
+        ovenOptions.isNotEmpty ? ovenOptions : controller.managedOvens;
+
+    final Set<String> activeOvenNames =
+        controller.ovens.map((e) => e.ovenName).toSet();
+
+    final List<String> availableOvens = sourceOvenOptions
         .where((oven) => !activeOvenNames.contains(oven))
         .toList();
 
-    final hasAvailableOvens = availableOvens.isNotEmpty;
+    final bool hasAvailableOvens = availableOvens.isNotEmpty;
+
     final String? safeSelectedOven =
         hasAvailableOvens && availableOvens.contains(selectedOven)
             ? selectedOven
@@ -447,7 +456,7 @@ class StartTrackingPage extends StatelessWidget {
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
         child: Column(
-          children: [
+          children: <Widget>[
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -455,7 +464,7 @@ class StartTrackingPage extends StatelessWidget {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
+                  colors: <Color>[
                     Color(0xFF102240),
                     Color(0xFF111B31),
                     Color(0xFF0C1525),
@@ -464,7 +473,7 @@ class StartTrackingPage extends StatelessWidget {
                 border: Border.all(
                   color: AppColors.border.withValues(alpha: 0.95),
                 ),
-                boxShadow: [
+                boxShadow: <BoxShadow>[
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.24),
                     blurRadius: 24,
@@ -474,18 +483,18 @@ class StartTrackingPage extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: <Widget>[
                   _panelLabel('LIVE FACTORY TIME'),
                   const SizedBox(height: 10),
                   LiveClockText(text: controller.liveClock),
                   const SizedBox(height: 16),
                   Row(
-                    children: [
+                    children: <Widget>[
                       _heroStatTile(
                         icon: Icons.local_fire_department_rounded,
                         label: 'ACTIVE OVENS',
                         value: '${controller.ovens.length}',
-                        gradient: const [
+                        gradient: const <Color>[
                           Color(0xFF162743),
                           Color(0xFF102038),
                         ],
@@ -496,11 +505,11 @@ class StartTrackingPage extends StatelessWidget {
                         label: 'DUE CHECKS',
                         value: '$dueChecks',
                         gradient: dueChecks > 0
-                            ? const [
+                            ? const <Color>[
                                 Color(0xFF3A1D28),
                                 Color(0xFF251723),
                               ]
-                            : const [
+                            : const <Color>[
                                 Color(0xFF162743),
                                 Color(0xFF102038),
                               ],
@@ -526,7 +535,7 @@ class StartTrackingPage extends StatelessWidget {
   }
 
   int _dueChecksCount() {
-    final nowMinute = controller.nowMinuteOfDay;
+    final int nowMinute = controller.nowMinuteOfDay;
     int count = 0;
 
     for (final oven in controller.ovens) {

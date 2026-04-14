@@ -27,6 +27,8 @@ class OvenController extends ChangeNotifier {
         _storageService = storageService,
         _notificationService = notificationService;
 
+  static const String _settingsStorageKey = 'settings_json';
+
   static const String _defaultMainAlarmToneUri =
       'assets/sounds/mixkit-facility-alarm-sound-999.wav';
   static const String _defaultMainAlarmToneTitle = 'App Main Alarm';
@@ -34,13 +36,21 @@ class OvenController extends ChangeNotifier {
       'assets/sounds/mixkit-emergency-alert-alarm-1007.wav';
   static const String _defaultSensorAlarmToneTitle = 'App Sensor Alert';
 
+  static const List<String> _defaultManagedOvens = <String>[
+    'Oven 1',
+    'Oven 2',
+    'Oven 3',
+    'Oven 4',
+  ];
+
   final AudioService _audioService;
   final VibrationService _vibrationService;
   final StorageService _storageService;
   final NotificationService _notificationService;
 
-  final List<OvenItem> ovens = [];
-  final List<HistoryItem> history = [];
+  final List<OvenItem> ovens = <OvenItem>[];
+  final List<HistoryItem> history = <HistoryItem>[];
+  final List<String> _managedOvens = <String>[];
 
   final Set<String> _triggeredMainAlerts = <String>{};
   final Set<String> _triggeredSensorAlerts = <String>{};
@@ -61,6 +71,8 @@ class OvenController extends ChangeNotifier {
   bool _tickInProgress = false;
 
   DateTime get now => _now;
+
+  List<String> get managedOvens => List<String>.unmodifiable(_managedOvens);
 
   String get liveClock => TimeUtils.format12Hour(
         _now.hour,
@@ -158,6 +170,113 @@ class OvenController extends ChangeNotifier {
     }
   }
 
+  String normalizeOvenName(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String? validateManagedOvenName(
+    String value, {
+    String? excludeName,
+  }) {
+    final normalized = normalizeOvenName(value);
+    final normalizedExclude = excludeName == null
+        ? null
+        : normalizeOvenName(excludeName).toLowerCase();
+
+    if (normalized.isEmpty) {
+      return 'Enter an oven name.';
+    }
+
+    if (normalized.length < 2) {
+      return 'Oven name is too short.';
+    }
+
+    final duplicate = _managedOvens.any((oven) {
+      final current = normalizeOvenName(oven).toLowerCase();
+      return current == normalized.toLowerCase() && current != normalizedExclude;
+    });
+
+    if (duplicate) {
+      return 'This oven already exists.';
+    }
+
+    return null;
+  }
+
+  Future<void> addManagedOven(String name) async {
+    final normalized = normalizeOvenName(name);
+    final validation = validateManagedOvenName(normalized);
+
+    if (validation != null) {
+      throw Exception(validation);
+    }
+
+    _managedOvens.add(normalized);
+    _managedOvens.sort(_sortOvenNames);
+
+    await _persistSettings();
+    notifyListeners();
+  }
+
+  Future<void> renameManagedOven({
+    required String oldName,
+    required String newName,
+  }) async {
+    final normalizedOld = normalizeOvenName(oldName);
+    final normalizedNew = normalizeOvenName(newName);
+
+    final index = _managedOvens.indexWhere(
+      (oven) => normalizeOvenName(oven).toLowerCase() == normalizedOld.toLowerCase(),
+    );
+
+    if (index == -1) {
+      throw Exception('Oven not found.');
+    }
+
+    final validation = validateManagedOvenName(
+      normalizedNew,
+      excludeName: normalizedOld,
+    );
+
+    if (validation != null) {
+      throw Exception(validation);
+    }
+
+    if (isOvenActive(normalizedOld)) {
+      throw Exception('Cannot rename an active oven.');
+    }
+
+    _managedOvens[index] = normalizedNew;
+    _managedOvens.sort(_sortOvenNames);
+
+    await _persistSettings();
+    notifyListeners();
+  }
+
+  Future<void> removeManagedOven(String name) async {
+    final normalized = normalizeOvenName(name);
+
+    if (isOvenActive(normalized)) {
+      throw Exception('Cannot delete an active oven.');
+    }
+
+    _managedOvens.removeWhere(
+      (oven) => normalizeOvenName(oven).toLowerCase() == normalized.toLowerCase(),
+    );
+
+    if (_managedOvens.isEmpty) {
+      _managedOvens.addAll(_defaultManagedOvens);
+      _managedOvens.sort(_sortOvenNames);
+    }
+
+    await _persistSettings();
+    notifyListeners();
+  }
+
+  int _sortOvenNames(String a, String b) {
+    return a.toLowerCase().compareTo(b.toLowerCase());
+  }
+
   String? validateDuration({
     required int hours,
     required int minutes,
@@ -178,14 +297,17 @@ class OvenController extends ChangeNotifier {
   }
 
   bool isOvenActive(String ovenName) {
-    return ovens.any((oven) => oven.ovenName == ovenName);
+    final normalized = normalizeOvenName(ovenName).toLowerCase();
+    return ovens.any(
+      (oven) => normalizeOvenName(oven.ovenName).toLowerCase() == normalized,
+    );
   }
 
   Future<List<SystemToneOption>> getMainAlarmToneOptions() async {
     final tones = await _audioService.getAlarmTones();
 
     if (tones.isEmpty && mainAlarmToneUri.isNotEmpty) {
-      return [
+      return <SystemToneOption>[
         SystemToneOption(
           title: mainAlarmToneTitle,
           uri: mainAlarmToneUri,
@@ -200,7 +322,7 @@ class OvenController extends ChangeNotifier {
     final tones = await _audioService.getNotificationTones();
 
     if (tones.isEmpty && sensorAlarmToneUri.isNotEmpty) {
-      return [
+      return <SystemToneOption>[
         SystemToneOption(
           title: sensorAlarmToneTitle,
           uri: sensorAlarmToneUri,
@@ -241,24 +363,34 @@ class OvenController extends ChangeNotifier {
     required int addHours,
     required int addMinutes,
   }) async {
+    final normalizedOvenName = normalizeOvenName(ovenName);
+
     final validation = validateDuration(hours: addHours, minutes: addMinutes);
 
     if (validation != null) {
       throw Exception(validation);
     }
 
-    if (isOvenActive(ovenName)) {
-      throw Exception('$ovenName is already active.');
+    final existsInManagedList = _managedOvens.any(
+      (oven) => normalizeOvenName(oven).toLowerCase() == normalizedOvenName.toLowerCase(),
+    );
+
+    if (!existsInManagedList) {
+      throw Exception('Selected oven is not available.');
+    }
+
+    if (isOvenActive(normalizedOvenName)) {
+      throw Exception('$normalizedOvenName is already active.');
     }
 
     final startMinuteOfDay = TimeUtils.minuteOfDayFromTimeOfDay(startTime);
     final totalMinutes = addHours * 60 + addMinutes;
     final endMinuteRaw = (startMinuteOfDay + totalMinutes) % (24 * 60);
     final outTime = TimeUtils.addDurationToTime(startTime, addHours, addMinutes);
-    final sessionId = IdUtils.sessionId(ovenName);
+    final sessionId = IdUtils.sessionId(normalizedOvenName);
 
     final steps = _buildSensorSteps(
-      ovenName: ovenName,
+      ovenName: normalizedOvenName,
       sessionId: sessionId,
       startMinuteOfDay: startMinuteOfDay,
       totalMinutes: totalMinutes,
@@ -267,7 +399,7 @@ class OvenController extends ChangeNotifier {
     ovens.add(
       OvenItem(
         sessionId: sessionId,
-        ovenName: ovenName,
+        ovenName: normalizedOvenName,
         startMinuteOfDay: startMinuteOfDay,
         endMinuteOfDayRaw: endMinuteRaw,
         totalMinutes: totalMinutes,
@@ -292,13 +424,13 @@ class OvenController extends ChangeNotifier {
     required int startMinuteOfDay,
     required int totalMinutes,
   }) {
-    final List<SensorStep> result = [];
-    const sensorGap = 30;
+    final List<SensorStep> result = <SensorStep>[];
+    const int sensorGap = 30;
 
     for (int passed = sensorGap; passed < totalMinutes; passed += sensorGap) {
-      final minute = (startMinuteOfDay + passed) % (24 * 60);
-      final hour = minute ~/ 60;
-      final min = minute % 60;
+      final int minute = (startMinuteOfDay + passed) % (24 * 60);
+      final int hour = minute ~/ 60;
+      final int min = minute % 60;
 
       result.add(
         SensorStep(
@@ -316,13 +448,13 @@ class OvenController extends ChangeNotifier {
     required String sessionId,
     required String stepId,
   }) async {
-    final ovenIndex = ovens.indexWhere((o) => o.sessionId == sessionId);
+    final int ovenIndex = ovens.indexWhere((o) => o.sessionId == sessionId);
     if (ovenIndex == -1) {
       return;
     }
 
-    final oven = ovens[ovenIndex];
-    final updatedSteps = oven.steps.map((step) {
+    final OvenItem oven = ovens[ovenIndex];
+    final List<SensorStep> updatedSteps = oven.steps.map((step) {
       if (step.id == stepId) {
         return step.copyWith(checked: true);
       }
@@ -340,12 +472,12 @@ class OvenController extends ChangeNotifier {
   }
 
   Future<void> closeOven(String sessionId) async {
-    final ovenIndex = ovens.indexWhere((o) => o.sessionId == sessionId);
+    final int ovenIndex = ovens.indexWhere((o) => o.sessionId == sessionId);
     if (ovenIndex == -1) {
       return;
     }
 
-    final oven = ovens.removeAt(ovenIndex);
+    final OvenItem oven = ovens.removeAt(ovenIndex);
 
     history.insert(
       0,
@@ -362,7 +494,7 @@ class OvenController extends ChangeNotifier {
 
     await _notificationService.cancel(_mainNotificationId(oven.sessionId));
 
-    for (final step in oven.steps) {
+    for (final SensorStep step in oven.steps) {
       _triggeredSensorAlerts.remove('${oven.sessionId}_${step.id}');
       await _notificationService.cancel(_sensorNotificationId(step.id));
     }
@@ -407,9 +539,9 @@ class OvenController extends ChangeNotifier {
       return nowMinute >= targetMinute;
     }
 
-    final wrappedNow =
+    final int wrappedNow =
         nowMinute < startMinute ? nowMinute + (24 * 60) : nowMinute;
-    final wrappedTarget = targetMinute + (24 * 60);
+    final int wrappedTarget = targetMinute + (24 * 60);
 
     return wrappedNow >= wrappedTarget;
   }
@@ -445,8 +577,8 @@ class OvenController extends ChangeNotifier {
 
   int dueChecksCount() {
     int count = 0;
-    for (final oven in ovens) {
-      for (final step in oven.steps) {
+    for (final OvenItem oven in ovens) {
+      for (final SensorStep step in oven.steps) {
         if (_isSensorAlertPending(oven, step)) {
           count++;
         }
@@ -464,7 +596,7 @@ class OvenController extends ChangeNotifier {
     bool hasPendingMainAlert = false;
     bool hasPendingSensorAlert = false;
 
-    for (final oven in ovens) {
+    for (final OvenItem oven in ovens) {
       if (_isMainAlertPending(oven)) {
         hasPendingMainAlert = true;
         break;
@@ -472,8 +604,8 @@ class OvenController extends ChangeNotifier {
     }
 
     if (!hasPendingMainAlert) {
-      for (final oven in ovens) {
-        for (final step in oven.steps) {
+      for (final OvenItem oven in ovens) {
+        for (final SensorStep step in oven.steps) {
           if (_isSensorAlertPending(oven, step)) {
             hasPendingSensorAlert = true;
             break;
@@ -499,8 +631,8 @@ class OvenController extends ChangeNotifier {
   }
 
   Future<void> _handleAlerts() async {
-    for (final oven in ovens) {
-      final mainIsDue = _isMainAlertPending(oven);
+    for (final OvenItem oven in ovens) {
+      final bool mainIsDue = _isMainAlertPending(oven);
 
       if (mainIsDue && !_triggeredMainAlerts.contains(oven.sessionId)) {
         _triggeredMainAlerts.add(oven.sessionId);
@@ -516,9 +648,9 @@ class OvenController extends ChangeNotifier {
         );
       }
 
-      for (final step in oven.steps) {
-        final sensorKey = '${oven.sessionId}_${step.id}';
-        final stepIsDue = _isSensorAlertPending(oven, step);
+      for (final SensorStep step in oven.steps) {
+        final String sensorKey = '${oven.sessionId}_${step.id}';
+        final bool stepIsDue = _isSensorAlertPending(oven, step);
 
         if (stepIsDue && !_triggeredSensorAlerts.contains(sensorKey)) {
           _triggeredSensorAlerts.add(sensorKey);
@@ -541,7 +673,8 @@ class OvenController extends ChangeNotifier {
     bool changed = false;
 
     if (mainAlarmToneUri.trim().isEmpty) {
-      final defaultAlarmTone = await _audioService.getDefaultAlarmTone();
+      final SystemToneOption? defaultAlarmTone =
+          await _audioService.getDefaultAlarmTone();
 
       if (defaultAlarmTone != null && defaultAlarmTone.uri.trim().isNotEmpty) {
         mainAlarmToneUri = defaultAlarmTone.uri.trim();
@@ -555,7 +688,7 @@ class OvenController extends ChangeNotifier {
     }
 
     if (sensorAlarmToneUri.trim().isEmpty) {
-      final defaultNotificationTone =
+      final SystemToneOption? defaultNotificationTone =
           await _audioService.getDefaultNotificationTone();
 
       if (defaultNotificationTone != null &&
@@ -570,6 +703,14 @@ class OvenController extends ChangeNotifier {
       changed = true;
     }
 
+    if (_managedOvens.isEmpty) {
+      _managedOvens
+        ..clear()
+        ..addAll(_defaultManagedOvens)
+        ..sort(_sortOvenNames);
+      changed = true;
+    }
+
     if (changed) {
       await _persistSettings();
       notifyListeners();
@@ -577,17 +718,18 @@ class OvenController extends ChangeNotifier {
   }
 
   Future<void> loadState() async {
-    final ovensJson = await _storageService.readString(StorageKeys.ovens);
-    final historyJson = await _storageService.readString(StorageKeys.history);
-    final settingsJson = await _storageService.readString('settings_json');
+    final String? ovensJson = await _storageService.readString(StorageKeys.ovens);
+    final String? historyJson = await _storageService.readString(StorageKeys.history);
+    final String? settingsJson = await _storageService.readString(_settingsStorageKey);
 
     ovens.clear();
     history.clear();
+    _managedOvens.clear();
     _triggeredMainAlerts.clear();
     _triggeredSensorAlerts.clear();
 
     if (ovensJson != null && ovensJson.isNotEmpty) {
-      final decoded = jsonDecode(ovensJson) as List<dynamic>;
+      final List<dynamic> decoded = jsonDecode(ovensJson) as List<dynamic>;
       ovens.addAll(
         decoded.map(
           (e) => OvenItem.fromJson(Map<String, dynamic>.from(e as Map)),
@@ -596,7 +738,7 @@ class OvenController extends ChangeNotifier {
     }
 
     if (historyJson != null && historyJson.isNotEmpty) {
-      final decoded = jsonDecode(historyJson) as List<dynamic>;
+      final List<dynamic> decoded = jsonDecode(historyJson) as List<dynamic>;
       history.addAll(
         decoded.map(
           (e) => HistoryItem.fromJson(Map<String, dynamic>.from(e as Map)),
@@ -605,7 +747,9 @@ class OvenController extends ChangeNotifier {
     }
 
     if (settingsJson != null && settingsJson.isNotEmpty) {
-      final decoded = jsonDecode(settingsJson) as Map<String, dynamic>;
+      final Map<String, dynamic> decoded =
+          jsonDecode(settingsJson) as Map<String, dynamic>;
+
       soundEnabled = decoded['soundEnabled'] as bool? ?? true;
       vibrationEnabled = decoded['vibrationEnabled'] as bool? ?? true;
       mainAlarmToneUri = (decoded['mainAlarmToneUri'] as String? ?? '').trim();
@@ -615,6 +759,21 @@ class OvenController extends ChangeNotifier {
           (decoded['sensorAlarmToneUri'] as String? ?? '').trim();
       sensorAlarmToneTitle = decoded['sensorAlarmToneTitle'] as String? ??
           'Default notification tone';
+
+      final List<dynamic> managed =
+          (decoded['managedOvens'] as List<dynamic>? ?? <dynamic>[]);
+      _managedOvens.addAll(
+        managed
+            .whereType<String>()
+            .map(normalizeOvenName)
+            .where((name) => name.isNotEmpty),
+      );
+      _managedOvens.sort(_sortOvenNames);
+    }
+
+    if (_managedOvens.isEmpty) {
+      _managedOvens.addAll(_defaultManagedOvens);
+      _managedOvens.sort(_sortOvenNames);
     }
 
     notifyListeners();
@@ -636,14 +795,15 @@ class OvenController extends ChangeNotifier {
 
   Future<void> _persistSettings() async {
     await _storageService.saveString(
-      'settings_json',
-      jsonEncode({
+      _settingsStorageKey,
+      jsonEncode(<String, dynamic>{
         'soundEnabled': soundEnabled,
         'vibrationEnabled': vibrationEnabled,
         'mainAlarmToneUri': mainAlarmToneUri,
         'mainAlarmToneTitle': mainAlarmToneTitle,
         'sensorAlarmToneUri': sensorAlarmToneUri,
         'sensorAlarmToneTitle': sensorAlarmToneTitle,
+        'managedOvens': _managedOvens,
       }),
     );
   }

@@ -24,21 +24,25 @@ class SensorStepTile extends StatelessWidget {
 
   Color _statusColor() {
     if (step.checked) {
-      return AppColors.successGreen;
+      return AppColors.success;
     }
+
     if (_isDue()) {
       return AppColors.danger;
     }
-    return AppColors.warning;
+
+    return AppColors.textSecondary;
   }
 
   String _statusText() {
     if (step.checked) {
       return 'Checked';
     }
+
     if (_isDue()) {
       return 'Pending';
     }
+
     return 'Upcoming';
   }
 
@@ -53,27 +57,41 @@ class SensorStepTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: <Color>[
+          colors: [
             AppColors.surfaceAlt.withValues(alpha: 0.9),
             AppColors.card.withValues(alpha: 0.9),
           ],
         ),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-        boxShadow: <BoxShadow>[
+        border: Border.all(
+          color: step.checked
+              ? AppColors.success.withValues(alpha: 0.5)
+              : isDue
+                  ? AppColors.danger.withValues(alpha: 0.5)
+                  : AppColors.border,
+        ),
+        boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.15),
+            color: step.checked
+                ? AppColors.success.withValues(alpha: 0.15)
+                : isDue
+                    ? AppColors.danger.withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
-        children: <Widget>[
+        children: [
           Container(
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: step.checked
+                  ? AppColors.success.withValues(alpha: 0.15)
+                  : isDue
+                      ? AppColors.danger.withValues(alpha: 0.15)
+                      : AppColors.surface,
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -89,7 +107,7 @@ class SensorStepTile extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
+              children: [
                 Text(
                   step.display,
                   style: const TextStyle(
@@ -114,7 +132,7 @@ class SensorStepTile extends StatelessWidget {
             FilledButton(
               onPressed: onCheck,
               style: FilledButton.styleFrom(
-                backgroundColor: color,
+                backgroundColor: AppColors.danger,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

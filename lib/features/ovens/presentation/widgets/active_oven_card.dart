@@ -143,7 +143,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
   }) {
     if (checked) return AppColors.successGreen;
     if (isDue) return AppColors.danger;
-    return AppColors.warning;
+    return AppColors.textSecondary;
   }
 
   String _stepStatusText({

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -5,7 +7,7 @@ import '../../data/models/oven_item.dart';
 import '../../data/models/sensor_step.dart';
 import '../controllers/oven_controller.dart';
 
-class ActiveOvensPage extends StatelessWidget {
+class ActiveOvensPage extends StatefulWidget {
   const ActiveOvensPage({
     super.key,
     required this.controller,
@@ -21,32 +23,252 @@ class ActiveOvensPage extends StatelessWidget {
   })? onCheckStep;
 
   @override
+  State<ActiveOvensPage> createState() => _ActiveOvensPageState();
+}
+
+class _ActiveOvensPageState extends State<ActiveOvensPage> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _syncPageIndex(int length) {
+    if (length == 0) {
+      _currentPage = 0;
+      return;
+    }
+
+    if (_currentPage >= length) {
+      final safePage = length - 1;
+      _currentPage = safePage;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(safePage);
+        }
+      });
+    }
+  }
+
+  double _pageValueFor(int index) {
+    if (!_pageController.hasClients) {
+      return _currentPage.toDouble();
+    }
+    return _pageController.page ?? _currentPage.toDouble();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final activeOvens = controller.ovens;
+    final activeOvens = widget.controller.ovens;
+    _syncPageIndex(activeOvens.length);
 
     return Scaffold(
       backgroundColor: const Color(0xFF031522),
       body: SafeArea(
         child: activeOvens.isEmpty
             ? const _EmptyState()
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            : Column(
                 children: [
-                  _HeaderCard(count: activeOvens.length),
-                  const SizedBox(height: 16),
-                  ...activeOvens.map(
-                    (oven) => Padding(
-                      padding: const EdgeInsets.only(bottom: 18),
-                      child: _ActiveOvenCard(
-                        oven: oven,
-                        nowMinuteOfDay: controller.nowMinuteOfDay,
-                        onClose: () async {
-                          await onCloseOven?.call(oven.sessionId);
-                        },
-                        onCheckStep: (stepId) {
-                          onCheckStep?.call(
-                            sessionId: oven.sessionId,
-                            stepId: stepId,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _HeaderCard(count: activeOvens.length),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Swipe to move ovens',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.07),
+                            ),
+                          ),
+                          child: Text(
+                            '${_currentPage + 1} / ${activeOvens.length}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: activeOvens.length,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final oven = activeOvens[index];
+
+                        return AnimatedBuilder(
+                          animation: _pageController,
+                          builder: (context, child) {
+                            final page = _pageValueFor(index);
+                            final delta = index - page;
+                            final distance = delta.abs().clamp(0.0, 1.0);
+
+                            final scale = lerpDouble(0.92, 1.0, 1 - distance)!;
+                            final opacity =
+                                lerpDouble(0.72, 1.0, 1 - distance)!;
+                            final translateX =
+                                lerpDouble(42.0, 0.0, 1 - distance)! *
+                                    (delta.isNegative ? -1 : 1);
+                            final translateY =
+                                lerpDouble(18.0, 0.0, 1 - distance)!;
+                            final rotateY =
+                                lerpDouble(0.10, 0.0, 1 - distance)! *
+                                    (delta.isNegative ? 1 : -1);
+                            final blurOpacity =
+                                lerpDouble(0.0, 1.0, 1 - distance)!;
+                            final glowOpacity =
+                                lerpDouble(0.0, 0.22, 1 - distance)!;
+
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              child: Transform(
+                                alignment: Alignment.center,
+                                transform: Matrix4.identity()
+                                  ..setEntry(3, 2, 0.001)
+                                  ..translate(translateX, translateY)
+                                  ..rotateY(rotateY)
+                                  ..scale(scale),
+                                child: Opacity(
+                                  opacity: opacity,
+                                  child: Stack(
+                                    children: [
+                                      Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(28),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.white.withValues(
+                                                    alpha: glowOpacity,
+                                                  ),
+                                                  blurRadius: 36,
+                                                  spreadRadius: 2,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: AnimatedOpacity(
+                                            duration: const Duration(
+                                              milliseconds: 180,
+                                            ),
+                                            opacity: blurOpacity * 0.08,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(28),
+                                                gradient: const LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    Colors.white,
+                                                    Colors.transparent,
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      child!,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          child: _ActiveOvenCard(
+                            oven: oven,
+                            nowMinuteOfDay: widget.controller.nowMinuteOfDay,
+                            onClose: () async {
+                              await widget.onCloseOven?.call(oven.sessionId);
+                            },
+                            onCheckStep: (stepId) {
+                              widget.onCheckStep?.call(
+                                sessionId: oven.sessionId,
+                                stepId: stepId,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        activeOvens.length,
+                        (index) {
+                          final bool isActive = index == _currentPage;
+
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            height: 10,
+                            width: isActive ? 30 : 10,
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(999),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        blurRadius: 14,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
                           );
                         },
                       ),
@@ -87,8 +309,8 @@ class _HeaderCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(12),
@@ -96,7 +318,7 @@ class _HeaderCard extends StatelessWidget {
             child: const Icon(
               Icons.local_fire_department_rounded,
               color: Colors.white70,
-              size: 18,
+              size: 19,
             ),
           ),
           const SizedBox(width: 10),
@@ -105,7 +327,7 @@ class _HeaderCard extends StatelessWidget {
               'Running oven sessions',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -123,7 +345,7 @@ class _HeaderCard extends StatelessWidget {
               '$count active',
               style: const TextStyle(
                 color: Colors.white60,
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -156,14 +378,14 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.local_fire_department_outlined,
               color: Colors.white54,
-              size: 42,
+              size: 48,
             ),
             SizedBox(height: 14),
             Text(
               'No active ovens',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 17,
+                fontSize: 22,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -173,7 +395,7 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white54,
-                fontSize: 12,
+                fontSize: 15,
               ),
             ),
           ],
@@ -419,11 +641,11 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
     required bool emphasize,
     IconData? icon,
   }) {
-    final Color titleColor = emphasize ? AppColors.danger : Colors.white38;
+    final Color titleColor = emphasize ? AppColors.danger : Colors.white54;
 
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           color: const Color(0xFF23364A),
           borderRadius: BorderRadius.circular(14),
@@ -441,29 +663,29 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
                 if (icon != null) ...[
                   Icon(
                     icon,
-                    size: 11,
+                    size: 17,
                     color: titleColor,
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                 ],
                 Text(
                   title,
                   style: TextStyle(
                     color: titleColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
                     letterSpacing: 0.2,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ],
@@ -486,13 +708,13 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
               'Progress',
               style: TextStyle(
                 color: Colors.white70,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
               ),
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isFinished
                     ? AppColors.danger.withValues(alpha: 0.14)
@@ -508,14 +730,14 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
                 '$progressPercent%',
                 style: TextStyle(
                   color: isFinished ? AppColors.danger : Colors.white70,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
@@ -525,7 +747,7 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
             const endMarkerSize = 30.0;
 
             return SizedBox(
-              height: 48,
+              height: 52,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -756,7 +978,7 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
@@ -769,16 +991,16 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
         children: [
           Icon(
             icon,
-            size: 13,
+            size: 17,
             color: color,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 7),
           Text(
             text,
             style: TextStyle(
               color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -805,19 +1027,19 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
             child: FilledButton.icon(
               onPressed: () => widget.onCheckStep(targetStep.id),
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(58),
+                minimumSize: const Size.fromHeight(70),
                 backgroundColor: AppColors.danger,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              icon: const Icon(Icons.sensors_rounded, size: 18),
+              icon: const Icon(Icons.sensors_rounded, size: 22),
               label: const Text(
                 'CHECK SENSOR NOW',
                 style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -835,19 +1057,19 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
           child: FilledButton.icon(
             onPressed: widget.onClose,
             style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(58),
+              minimumSize: const Size.fromHeight(70),
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            icon: const Icon(Icons.inventory_2_outlined, size: 18),
+            icon: const Icon(Icons.inventory_2_outlined, size: 22),
             label: const Text(
               'REMOVE FROM OVEN',
               style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
                 letterSpacing: 0.2,
               ),
             ),
@@ -865,7 +1087,7 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
       child: OutlinedButton.icon(
         onPressed: widget.onClose,
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size.fromHeight(68),
           foregroundColor: Colors.white70,
           side: BorderSide(
             color: Colors.white.withValues(alpha: 0.12),
@@ -878,13 +1100,13 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
           _allSensorChecksCompleted()
               ? Icons.schedule_rounded
               : Icons.check_circle_outline,
-          size: 18,
+          size: 22,
         ),
         label: Text(
           buttonText,
           style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
             letterSpacing: 0.2,
           ),
         ),
@@ -900,321 +1122,341 @@ class _ActiveOvenCardState extends State<_ActiveOvenCard>
     final isFinished = _isFinished();
     final nextPendingStep = _nextPendingStep();
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isFinished
-              ? const [
-                  Color(0xFF241217),
-                  Color(0xFF190F13),
-                ]
-              : const [
-                  Color(0xFF18304F),
-                  Color(0xFF102642),
-                ],
-        ),
-        border: Border.all(
-          color: isFinished
-              ? AppColors.danger.withValues(alpha: 0.50)
-              : Colors.white.withValues(alpha: 0.08),
-          width: isFinished ? 1.5 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isFinished
-                ? AppColors.danger.withValues(alpha: 0.18)
-                : Colors.black.withValues(alpha: 0.22),
-            blurRadius: isFinished ? 22 : 18,
-            spreadRadius: isFinished ? 1 : 0,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isFinished)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.danger.withValues(alpha: 0.26),
-                  ),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppColors.danger,
-                      size: 19,
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Time completed. Remove product from oven.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          height: constraints.maxHeight,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isFinished
+                  ? const [
+                      Color(0xFF241217),
+                      Color(0xFF190F13),
+                    ]
+                  : const [
+                      Color(0xFF18304F),
+                      Color(0xFF102642),
+                    ],
+            ),
+            border: Border.all(
+              color: isFinished
+                  ? AppColors.danger.withValues(alpha: 0.50)
+                  : Colors.white.withValues(alpha: 0.08),
+              width: isFinished ? 1.5 : 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isFinished
+                    ? AppColors.danger.withValues(alpha: 0.18)
+                    : Colors.black.withValues(alpha: 0.22),
+                blurRadius: isFinished ? 22 : 18,
+                spreadRadius: isFinished ? 1 : 0,
+                offset: const Offset(0, 8),
               ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isFinished
-                        ? AppColors.danger.withValues(alpha: 0.20)
-                        : Colors.redAccent.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isFinished
-                          ? AppColors.danger.withValues(alpha: 0.24)
-                          : Colors.white.withValues(alpha: 0.07),
-                    ),
-                  ),
-                  child: Icon(
-                    isFinished
-                        ? Icons.warning_amber_rounded
-                        : Icons.local_fire_department_rounded,
-                    color: Colors.white,
-                    size: 21,
-                  ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 30,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 1),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.oven.ovenName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            letterSpacing: 0.2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isFinished)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.danger.withValues(alpha: 0.26),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isFinished
-                              ? 'Completed • waiting for operator action'
-                              : 'Active tracking session',
-                          style: TextStyle(
-                            color:
-                                isFinished ? AppColors.danger : Colors.white60,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: AppColors.danger,
+                              size: 23,
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Time completed. Remove product from oven.',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 17,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: isFinished
+                                ? AppColors.danger.withValues(alpha: 0.20)
+                                : Colors.redAccent.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isFinished
+                                  ? AppColors.danger.withValues(alpha: 0.24)
+                                  : Colors.white.withValues(alpha: 0.07),
+                            ),
+                          ),
+                          child: Icon(
+                            isFinished
+                                ? Icons.warning_amber_rounded
+                                : Icons.local_fire_department_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 1),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.oven.ovenName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 30,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isFinished
+                                      ? 'Completed • waiting for operator action'
+                                      : 'Active tracking session',
+                                  style: TextStyle(
+                                    color: isFinished
+                                        ? AppColors.danger
+                                        : Colors.white60,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildTopInfoBox(
-                  title: 'IN TIME',
-                  value: widget.oven.startDisplay,
-                  emphasize: false,
-                  icon: Icons.login_rounded,
-                ),
-                const SizedBox(width: 10),
-                _buildTopInfoBox(
-                  title: 'OUT TIME',
-                  value: widget.oven.outDisplay,
-                  emphasize: isFinished,
-                  icon: Icons.logout_rounded,
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _buildProgressTimeline(),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Sensor Checks',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: dueCount > 0
-                        ? AppColors.danger.withValues(alpha: 0.14)
-                        : Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: dueCount > 0
-                          ? AppColors.danger.withValues(alpha: 0.20)
-                          : Colors.white.withValues(alpha: 0.07),
-                    ),
-                  ),
-                  child: Text(
-                    dueCount > 0
-                        ? '$dueCount due / $completedCount done'
-                        : '$completedCount / ${steps.length} done',
-                    style: TextStyle(
-                      color: dueCount > 0 ? AppColors.danger : Colors.white60,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (steps.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF203451),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Text(
-                  'No sensor checks for this session.',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              )
-            else
-              ...steps.map(
-                (step) {
-                  final isDue = _isStepDue(step);
-                  final done = step.checked;
-                  final isNextPending = !done && nextPendingStep?.id == step.id;
-
-                  final borderColor = done
-                      ? Colors.green.withValues(alpha: 0.32)
-                      : isDue
-                          ? AppColors.danger.withValues(alpha: 0.42)
-                          : isNextPending
-                              ? AppColors.warning.withValues(alpha: 0.28)
-                              : Colors.white.withValues(alpha: 0.06);
-
-                  final backgroundColor = done
-                      ? const Color(0xFF1B3C3B)
-                      : isDue
-                          ? const Color(0xFF3A2024)
-                          : isNextPending
-                              ? const Color(0xFF3A3221)
-                              : const Color(0xFF1E334F);
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      minLeadingWidth: 20,
-                      onTap: (!done && isDue)
-                          ? () => widget.onCheckStep(step.id)
-                          : null,
-                      leading: Icon(
-                        done
-                            ? Icons.check_circle
-                            : isDue
-                                ? Icons.notifications_active
-                                : Icons.radio_button_unchecked,
-                        color: done
-                            ? Colors.greenAccent
-                            : isDue
-                                ? AppColors.danger
-                                : Colors.white54,
-                        size: 20,
-                      ),
-                      title: Text(
-                        step.display,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildTopInfoBox(
+                          title: 'IN TIME',
+                          value: widget.oven.startDisplay,
+                          emphasize: false,
+                          icon: Icons.login_rounded,
                         ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: _buildStatusBadge(step),
-                      ),
-                      trailing: done
-                          ? const Icon(
-                              Icons.chevron_right,
-                              color: Colors.white24,
-                              size: 18,
-                            )
-                          : isDue
-                              ? FilledButton(
-                                  onPressed: () => widget.onCheckStep(step.id),
-                                  style: FilledButton.styleFrom(
-                                    minimumSize: const Size(112, 42),
-                                    backgroundColor: AppColors.danger,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'CHECK NOW',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.chevron_right,
-                                  color: Colors.white38,
-                                  size: 18,
-                                ),
+                        const SizedBox(width: 10),
+                        _buildTopInfoBox(
+                          title: 'OUT TIME',
+                          value: widget.oven.outDisplay,
+                          emphasize: isFinished,
+                          icon: Icons.logout_rounded,
+                        ),
+                      ],
                     ),
-                  );
-                },
+                    const SizedBox(height: 18),
+                    _buildProgressTimeline(),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Sensor Checks',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: dueCount > 0
+                                ? AppColors.danger.withValues(alpha: 0.14)
+                                : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: dueCount > 0
+                                  ? AppColors.danger.withValues(alpha: 0.20)
+                                  : Colors.white.withValues(alpha: 0.07),
+                            ),
+                          ),
+                          child: Text(
+                            dueCount > 0
+                                ? '$dueCount due / $completedCount done'
+                                : '$completedCount / ${steps.length} done',
+                            style: TextStyle(
+                              color: dueCount > 0
+                                  ? AppColors.danger
+                                  : Colors.white60,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (steps.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF203451),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text(
+                          'No sensor checks for this session.',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                          ),
+                        ),
+                      )
+                    else
+                      ...steps.map(
+                        (step) {
+                          final isDue = _isStepDue(step);
+                          final done = step.checked;
+                          final isNextPending =
+                              !done && nextPendingStep?.id == step.id;
+
+                          final borderColor = done
+                              ? Colors.green.withValues(alpha: 0.32)
+                              : isDue
+                                  ? AppColors.danger.withValues(alpha: 0.42)
+                                  : isNextPending
+                                      ? AppColors.warning.withValues(alpha: 0.28)
+                                      : Colors.white.withValues(alpha: 0.06);
+
+                          final backgroundColor = done
+                              ? const Color(0xFF1B3C3B)
+                              : isDue
+                                  ? const Color(0xFF3A2024)
+                                  : isNextPending
+                                      ? const Color(0xFF3A3221)
+                                      : const Color(0xFF1E334F);
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: backgroundColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              minLeadingWidth: 24,
+                              onTap: (!done && isDue)
+                                  ? () => widget.onCheckStep(step.id)
+                                  : null,
+                              leading: Icon(
+                                done
+                                    ? Icons.check_circle
+                                    : isDue
+                                        ? Icons.notifications_active
+                                        : Icons.radio_button_unchecked,
+                                color: done
+                                    ? Colors.greenAccent
+                                    : isDue
+                                        ? AppColors.danger
+                                        : Colors.white54,
+                                size: 26,
+                              ),
+                              title: Text(
+                                step.display,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 26,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: _buildStatusBadge(step),
+                              ),
+                              trailing: done
+                                  ? const Icon(
+                                      Icons.chevron_right,
+                                      color: Colors.white24,
+                                      size: 22,
+                                    )
+                                  : isDue
+                                      ? FilledButton(
+                                          onPressed: () =>
+                                              widget.onCheckStep(step.id),
+                                          style: FilledButton.styleFrom(
+                                            minimumSize: const Size(136, 50),
+                                            backgroundColor: AppColors.danger,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'CHECK NOW',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.chevron_right,
+                                          color: Colors.white38,
+                                          size: 22,
+                                        ),
+                            ),
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 14),
+                    _buildPrimaryButton(),
+                  ],
+                ),
               ),
-            const SizedBox(height: 14),
-            _buildPrimaryButton(),
-          ],
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

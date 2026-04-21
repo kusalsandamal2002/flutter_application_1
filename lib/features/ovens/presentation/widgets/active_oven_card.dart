@@ -163,7 +163,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: isFinished
               ? AppColors.danger.withValues(alpha: 0.08)
@@ -182,7 +182,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
               children: [
                 Icon(
                   icon,
-                  size: 14,
+                  size: 16,
                   color:
                       isFinished ? AppColors.danger : AppColors.textSecondary,
                 ),
@@ -193,8 +193,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                     color: isFinished
                         ? AppColors.danger
                         : AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
@@ -204,8 +204,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
               value,
               style: const TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ],
@@ -221,12 +221,12 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
           title,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
           ),
         ),
         const Spacer(),
-        ?trailing,
+        if (trailing != null) trailing,
       ],
     );
   }
@@ -251,7 +251,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
           child: FilledButton.icon(
             onPressed: widget.onClose,
             style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 66),
+              minimumSize: const Size(double.infinity, 72),
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
@@ -267,7 +267,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
               'REMOVE FROM OVEN',
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 16,
+                fontSize: 20,
                 letterSpacing: 0.4,
               ),
             ),
@@ -413,7 +413,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                                   'Oven completed',
                                   style: TextStyle(
                                     color: AppColors.textPrimary,
-                                    fontSize: 15,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
@@ -422,8 +422,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                                   'Remove product from oven and close this session.',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -438,8 +438,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 52,
-                        height: 52,
+                        width: 58,
+                        height: 58,
                         decoration: BoxDecoration(
                           color: isFinished
                               ? AppColors.danger.withValues(alpha: 0.16)
@@ -458,7 +458,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                           color: isFinished
                               ? AppColors.danger
                               : AppColors.primary,
-                          size: 24,
+                          size: 26,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -470,7 +470,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                               widget.oven.ovenName,
                               style: const TextStyle(
                                 color: AppColors.textPrimary,
-                                fontSize: 20,
+                                fontSize: 30,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.2,
                               ),
@@ -484,8 +484,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                                 color: isFinished
                                     ? AppColors.danger
                                     : AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
@@ -504,12 +504,18 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                           ),
                           icon:
                               const Icon(Icons.check_circle_outline, size: 18),
-                          label: const Text('Close'),
+                          label: const Text(
+                            'Close',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   if (isFinished) ...[
                     _buildFinishedActionButton(),
                     const SizedBox(height: 18),
@@ -522,14 +528,14 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                         value: widget.oven.startDisplay,
                         isFinished: isFinished,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       _miniInfoCard(
                         icon: Icons.logout_rounded,
                         label: 'OUT TIME',
                         value: widget.oven.outDisplay,
                         isFinished: isFinished,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       _miniInfoCard(
                         icon: Icons.timelapse_rounded,
                         label: 'DURATION',
@@ -543,8 +549,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                     'Progress',
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: isFinished
@@ -563,8 +569,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                           color: isFinished
                               ? AppColors.danger
                               : AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
@@ -711,8 +717,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
+                      horizontal: 16,
+                      vertical: 14,
                     ),
                     decoration: BoxDecoration(
                       color: isFinished
@@ -735,7 +741,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                         ),
                         Container(
                           width: 1,
-                          height: 28,
+                          height: 34,
                           color: isFinished
                               ? AppColors.danger.withValues(alpha: 0.14)
                               : AppColors.border,
@@ -749,7 +755,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                         ),
                         Container(
                           width: 1,
-                          height: 28,
+                          height: 34,
                           color: isFinished
                               ? AppColors.danger.withValues(alpha: 0.14)
                               : AppColors.border,
@@ -769,8 +775,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                     'Sensor Checks',
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceAlt,
@@ -781,8 +787,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                         '$checkedCount / $totalSteps completed',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
@@ -796,7 +802,7 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                   if (widget.oven.steps.isEmpty)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceAlt.withValues(
                           alpha: 0.45,
@@ -810,8 +816,8 @@ class _ActiveOvenCardState extends State<ActiveOvenCard>
                             : 'No sensor checks for this session.',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     )
@@ -861,8 +867,8 @@ class _MetricTile extends StatelessWidget {
           textAlign: align,
           style: const TextStyle(
             color: AppColors.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 4),
@@ -871,8 +877,8 @@ class _MetricTile extends StatelessWidget {
           textAlign: align,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
           ),
         ),
       ],

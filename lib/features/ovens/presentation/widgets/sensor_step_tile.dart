@@ -53,7 +53,7 @@ class SensorStepTile extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
@@ -84,8 +84,8 @@ class SensorStepTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: step.checked
                   ? AppColors.success.withValues(alpha: 0.15)
@@ -103,7 +103,7 @@ class SensorStepTile extends StatelessWidget {
               color: color,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +113,7 @@ class SensorStepTile extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
-                    fontSize: 15,
+                    fontSize: 22,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -122,7 +122,7 @@ class SensorStepTile extends StatelessWidget {
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                    fontSize: 16,
                   ),
                 ),
               ],
@@ -133,8 +133,12 @@ class SensorStepTile extends StatelessWidget {
               onPressed: onCheck,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: const Text('CHECK'),
